@@ -360,7 +360,8 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
                 printf("New best mAP!\n");
                 char buff[256];
                 sprintf(buff, "%s/%s_best.weights", backup_directory, base);
-                save_weights(net, buff);
+                fuse_conv_batchnorm(net);
+		save_weights(net, buff);
             }
 
             draw_precision = 1;
@@ -380,20 +381,6 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         draw_train_loss(windows_name, img, img_size, avg_loss, max_img_loss, iteration, net.max_batches, mean_average_precision, draw_precision, "mAP%", avg_contrastive_acc / 100, dont_show, mjpeg_port, avg_time);
 #endif    // OPENCV
 
-        //if (i % 1000 == 0 || (i < 1000 && i % 100 == 0)) {
-        //if (i % 100 == 0) {
-        if ((iteration >= (iter_save + 10000) || iteration % 10000 == 0) ||
-            (iteration >= (iter_save + 1000) || iteration % 1000 == 0) && net.max_batches < 10000)
-        {
-            iter_save = iteration;
-#ifdef GPU
-            if (ngpus != 1) sync_nets(nets, ngpus, 0);
-#endif
-            char buff[256];
-            sprintf(buff, "%s/%s_%d.weights", backup_directory, base, iteration);
-            save_weights(net, buff);
-        }
-
         if (iteration >= (iter_save_last + 100) || (iteration % 100 == 0 && iteration > 1)) {
             iter_save_last = iteration;
 #ifdef GPU
@@ -409,6 +396,22 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
                 printf(" EMA weights are saved to the file: %s \n", buff);
             }
         }
+        //if (i % 1000 == 0 || (i < 1000 && i % 100 == 0)) {
+        //if (i % 100 == 0) {
+        if ((iteration >= (iter_save + 10000) || iteration % 10000 == 0) ||
+            (iteration >= (iter_save + 10) || iteration % 10 == 0) && net.max_batches < 10000)
+        {
+            iter_save = iteration;
+#ifdef GPU
+            if (ngpus != 1) sync_nets(nets, ngpus, 0);
+#endif
+            char buff[256];
+            sprintf(buff, "%s/%s_%d.weights", backup_directory, base, iteration);
+            fuse_conv_batchnorm(net);
+	    save_weights(net, buff);
+        }
+
+        
         free_data(train);
     }
 #ifdef GPU
@@ -416,6 +419,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 #endif
     char buff[256];
     sprintf(buff, "%s/%s_final.weights", backup_directory, base);
+    fuse_conv_batchnorm(net);
     save_weights(net, buff);
     printf("If you want to train from the beginning, then use flag in the end of training command: -clear \n");
 
