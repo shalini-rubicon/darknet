@@ -398,8 +398,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         }
         //if (i % 1000 == 0 || (i < 1000 && i % 100 == 0)) {
         //if (i % 100 == 0) {
-        if ((iteration >= (iter_save + 10000) || iteration % 10000 == 0) ||
-            (iteration >= (iter_save + 10) || iteration % 10 == 0) && net.max_batches < 10000)
+        //if ((iteration >= (iter_save + 10000) || iteration % 10000 == 0) ||
+        //    (iteration >= (iter_save + 1000) || iteration % 1000 == 0) && net.max_batches < 10000)
+        if (iteration % 10 == 0)
         {
             iter_save = iteration;
 #ifdef GPU
@@ -407,6 +408,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 #endif
             char buff[256];
             sprintf(buff, "%s/%s_%d.weights", backup_directory, base, iteration);
+            printf("Iteration : %d\n", iteration);
             fuse_conv_batchnorm(net);
 	    save_weights(net, buff);
         }
