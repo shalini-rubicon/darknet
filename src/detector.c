@@ -365,7 +365,6 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
                 printf("New best mAP!\n");
                 char buff[256];
                 sprintf(buff, "%s/%s_best.weights", backup_directory, base);
-                fuse_conv_batchnorm(net);
 		save_weights(net, buff);
             }
 
@@ -405,7 +404,6 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         //if (i % 100 == 0) {
         if ((iteration >= (iter_save + 10000) || iteration % 10000 == 0) ||
             (iteration >= (iter_save + 1000) || iteration % 1000 == 0) && net.max_batches < 10000)
-        //if (iteration % 10 == 0)
         {
             iter_save = iteration;
 #ifdef GPU
@@ -413,15 +411,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 #endif
             char buff[256];
             sprintf(buff, "%s/%s_%d.weights", backup_directory, base, iteration);
-            printf("Iteration : %d\n", iteration);
             
-            fuse_conv_batchnorm(net);
 	    save_weights(net, buff);
 
-            FILE *fp_ = fopen("loss_graph.txt", "a+");
-            fprintf(fp_, "Saving fused weights.. Iter : %d\n",iteration);
-            fclose(fp_);
-            fflush(stdout);
         }
 
         
@@ -432,10 +424,22 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 #endif
     char buff[256];
     sprintf(buff, "%s/%s_final.weights", backup_directory, base);
-    fuse_conv_batchnorm(net);
     save_weights(net, buff);
     printf("If you want to train from the beginning, then use flag in the end of training command: -clear \n");
 
+    char src_buf[256], dst_buf[256];
+    network fuse_net = parse_network_cfg_custom(cfgfile, 1, 1);    // set batch=1
+    sprintf(src_buf, "%s/%s_best.weights", backup_directory, base);
+    if (src_buf) {
+        load_weights(&fuse_net, src_buf);
+    }
+    printf("Fusing conv batchnorm for best weights\n");
+    fuse_conv_batchnorm(fuse_net);
+                                    
+    sprintf(dst_buf, "%s/%s_best_fused.weights", backup_directory, base);
+    save_weights(fuse_net, dst_buf);
+    printf("Fused and saved best weights\n");
+    
 #ifdef OPENCV
     release_mat(&img);
     destroy_all_windows_cv();
